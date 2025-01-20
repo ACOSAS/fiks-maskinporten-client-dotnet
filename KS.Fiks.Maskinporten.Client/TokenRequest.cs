@@ -1,6 +1,4 @@
-using System;
-
-namespace Ks.Fiks.Maskinporten.Client.Cache
+namespace KS.Fiks.Maskinporten.Client
 {
     public class TokenRequest
     {
@@ -9,6 +7,10 @@ namespace Ks.Fiks.Maskinporten.Client.Cache
         public string ConsumerOrg { get; set; }
 
         public string OnBehalfOf { get; set; }
+
+        public string Audience { get; set; }
+
+        public string Pid { get; set; }
 
         public override bool Equals(object obj)
         {
@@ -27,12 +29,13 @@ namespace Ks.Fiks.Maskinporten.Client.Cache
 
         public override int GetHashCode()
         {
-            return (Scopes, ConsumerOrg, OnBehalfOf).GetHashCode();
+            return (Scopes, ConsumerOrg, OnBehalfOf, Audience, Pid).GetHashCode();
         }
 
         private bool Equals(TokenRequest other)
         {
-            return Scopes == other.Scopes && ConsumerOrg == other.ConsumerOrg && OnBehalfOf == other.OnBehalfOf;
+            return (Scopes, ConsumerOrg, OnBehalfOf, Audience, Pid) ==
+                   (other.Scopes, other.ConsumerOrg, other.OnBehalfOf, other.Audience, other.Pid);
         }
     }
 }

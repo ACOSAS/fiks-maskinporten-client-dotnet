@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
+using KS.Fiks.Maskinporten.Client;
 using Ks.Fiks.Maskinporten.Client.Cache;
 using Ks.Fiks.Maskinporten.Client.Jwt;
 using Newtonsoft.Json;
@@ -15,11 +16,11 @@ namespace Ks.Fiks.Maskinporten.Client
         private const string GrantType = "urn:ietf:params:oauth:grant-type:jwt-bearer";
         private const string MediaTypeFromUrl = "application/x-www-form-urlencoded";
         private const string CharsetUtf8 = "utf-8";
+
         private readonly MaskinportenClientConfiguration _configuration;
         private readonly HttpClient _httpClient;
 
         private readonly IJwtRequestTokenGenerator _tokenGenerator;
-
         private readonly ITokenCache _tokenCache;
 
         public MaskinportenClient(
@@ -31,7 +32,9 @@ namespace Ks.Fiks.Maskinporten.Client
             _tokenCache = new TokenCache();
             if (_configuration.Certificate != null)
             {
-                _tokenGenerator = new JwtRequestTokenGenerator(_configuration.Certificate, _configuration.KeyIdentifier);
+                _tokenGenerator = new JwtRequestTokenGenerator(
+                    _configuration.Certificate,
+                    _configuration.KeyIdentifier);
             }
             else
             {
@@ -40,6 +43,11 @@ namespace Ks.Fiks.Maskinporten.Client
                     _configuration.PrivateKey,
                     _configuration.KeyIdentifier);
             }
+        }
+
+        public async Task<MaskinportenToken> GetAccessToken(TokenRequest tokenRequest)
+        {
+            return await GetAccessTokenForRequest(tokenRequest).ConfigureAwait(false);
         }
 
         public async Task<MaskinportenToken> GetAccessToken(IEnumerable<string> scopes)
@@ -66,6 +74,24 @@ namespace Ks.Fiks.Maskinporten.Client
         {
             return await GetAccessTokenForRequest(new TokenRequest
             {
+                Scopes = scopes,
+                ConsumerOrg = consumerOrg
+            }).ConfigureAwait(false);
+        }
+
+        public async Task<MaskinportenToken> GetDelegatedAccessTokenForAudience(string consumerOrg, string audience,
+            IEnumerable<string> scopes)
+        {
+            return await GetDelegatedAccessTokenForAudience(consumerOrg, audience, ScopesAsString(scopes))
+                .ConfigureAwait(false);
+        }
+
+        public async Task<MaskinportenToken> GetDelegatedAccessTokenForAudience(string consumerOrg, string audience,
+            string scopes)
+        {
+            return await GetAccessTokenForRequest(new TokenRequest
+            {
+                Audience = audience,
                 Scopes = scopes,
                 ConsumerOrg = consumerOrg
             }).ConfigureAwait(false);
@@ -129,7 +155,8 @@ namespace Ks.Fiks.Maskinporten.Client
             var content = new FormUrlEncodedContent(new List<KeyValuePair<string, string>>()
             {
                 new KeyValuePair<string, string>("grant_type", GrantType),
-                new KeyValuePair<string, string>("assertion", _tokenGenerator.CreateEncodedJwt(tokenRequest, _configuration))
+                new KeyValuePair<string, string>("assertion",
+                    _tokenGenerator.CreateEncodedJwt(tokenRequest, _configuration))
             });
 
             var consumerOrg = tokenRequest.ConsumerOrg ?? this._configuration.ConsumerOrg;
